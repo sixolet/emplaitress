@@ -18,7 +18,7 @@ local function n(i, s)
 end
 
 function add_plaits(i)
-    params:add_group("plaits "..i, 11)
+    params:add_group("voice "..i, 13)
     params:add_trigger(n(i, "trigger"), "trigger")
     params:add_number(n(i, "note"), "note", 12, 127, 36, function(p)
         local snapped = music.snap_note_to_array(p:get(), scale)
@@ -37,6 +37,8 @@ function add_plaits(i)
     -- params:add_control(n(i, "timb_mod"), "timbre env", controlspec.new(0, 1, "lin", 0, 0))
     -- params:add_control(n(i, "morph_mod"), "morph env", controlspec.new(0, 1, "lin", 0, 0))
     params:add_control(n(i, "lpg_color"), "lpg color", controlspec.new(0, 1, "lin", 0, 0.5))
+    params:add_control(n(i, "gain"), "gain", controlspec.new(0, 3, "lin", 0, 1))
+    params:add_control(n(i, "pan"), "pan", controlspec.new(-1, 1, "lin", 0, 0))
     
     
     
@@ -54,7 +56,9 @@ function add_plaits(i)
             params:get(n(i, "decay")), --decay
             params:get(n(i, "lpg_color")), --lpg_color
             params:get(n(i, "amp")), --mul
-            params:get(n(i, "aux")) --aux_mix
+            params:get(n(i, "aux")), --aux_mix
+            params:get(n(i, "gain")), -- post-plaits gain
+            params:get(n(i, "pan")) -- pan
         })
     end)
 end
