@@ -166,6 +166,10 @@ for voice=1,4,1 do (function (i)
         end
     end
 
+    function player:stop_all()
+        osc.send({"localhost", 57120}, "/emplaitress/stop_all", {})
+    end
+
     function player:set_slew(s)
         params:set(n(i, "slew"), s)
     end

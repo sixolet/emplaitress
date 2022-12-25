@@ -75,11 +75,7 @@ Emplaitress {
 					\timb_mod, \morph_mod, \attack, \decay, \sustain, 
 					\release, \lpg_color, \mul, \aux_mix, \gain, \pan, \pitch_lag], 
 					msg[4..]].lace;
-				//args.postln;
-				//msg[4].asFloat.postln;
 	    	    if (notes[voice].includesKey(note), {
-					"setting".postln;
-					// notes[voice][note].set(\pitch, msg[4].asFloat);
 	    	        notes[voice][note].set(*args);
 					notes[voice].put(new_note, notes[voice][note]);
 					if(note != new_note, {
@@ -87,6 +83,16 @@ Emplaitress {
 					});
 	    	    });
 	    	}, "emplaitress/note_mod");
+
+			OSCFunc.new({|msg, time, addr, recvPort|
+				notes.keysValuesDo {|voice, active|
+					active.keysValuesDo {|note, syn|
+						syn.set(\gate, 0);
+						active.removeAt(note);
+					};
+				};
+			}, "emplaitress/stop_all");
+
             OSCFunc.new({ |msg, time, addr, recvPort|
                 var voice = msg[1].asInteger;
                 var note = msg[2].asInteger;
