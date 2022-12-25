@@ -40,7 +40,7 @@ Emplaitress {
 	    	            engine: engine, 
 	    	            harm: harm, 
 	    	            timbre: timbre + (timb_mod*env), 
-	    	            morph: morph + (morp_mod*env),
+	    	            morph: morph + (morph_mod*env),
 	    	            level: env,
 	    	            fm_mod: fm_mod,
 	    	            lpg_colour: lpg_color, 
