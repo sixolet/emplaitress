@@ -25,7 +25,7 @@ Emplaitress {
 	    	            mul: mul);
 	    	    sound = SelectX.ar(aux_mix, sound);
 	    	    sound = LeakDC.ar(sound);
-	    	    DetectSilence.ar(sound, doneAction: Done.freeSelf);
+	    	    DetectSilence.ar(sound, amp: 0.0005, time: 0.1, doneAction: Done.freeSelf);
 	    	    sound = (gain*sound).softclip;
 	    	    Out.ar(out, Pan2.ar(sound, pan));
 	        }).add;
@@ -40,7 +40,7 @@ Emplaitress {
 	    	            engine: engine, 
 	    	            harm: harm, 
 	    	            timbre: timbre + (timb_mod*env), 
-	    	            morph: morph + (morph_mod*env),
+	    	            morph: morph + (morp_mod*env),
 	    	            level: env,
 	    	            fm_mod: fm_mod,
 	    	            lpg_colour: lpg_color, 
@@ -49,7 +49,7 @@ Emplaitress {
 	    	    sound = LeakDC.ar(sound);
 	    	    sound = OnePole.ar(sound, coef: (1 - env)*(1 - lpg_color));
 	    	    sound = (gain*sound).softclip;
-	    	    DetectSilence.ar(sound, time: 0.2, doneAction: Done.freeSelf);
+	    	    DetectSilence.ar(sound, amp: 0.0005, time: 0.1, doneAction: Done.freeSelf);
 	    	    Out.ar(out, Pan2.ar(sound, pan));
 	        }).add;	        
 
