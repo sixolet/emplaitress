@@ -23,7 +23,7 @@ local function n(i, s)
     return "plaits_"..s.."_"..i
 end
 
-function add_plaits(i)
+local function add_plaits_params(i)
     params:add_group(n("group", i), "emplait voice "..i, 22)
     params:hide(n("group", i))
     params:add_option(n(i, "style"), "style", style_opts, 1)
@@ -58,8 +58,7 @@ function add_plaits(i)
     params:add_trigger(n(i, "trigger"), "trigger")
     params:add_binary(n(i, "gate"), "gate", "momentary", 0)
     params:add_number(n(i, "note"), "note", 12, 127, 36, function(p)
-        local snapped = music.snap_note_to_array(p:get(), scale)
-        return music.note_num_to_name(snapped, true)
+        return music.note_num_to_name(p:get(), true)
     end)
 
     params:add_option(n(i, "model"), "model", models, 14)
@@ -86,7 +85,7 @@ function add_plaits(i)
 
 
     params:set_action(n(i, "trigger"), function ()
-        local hz = music.note_num_to_freq(music.snap_note_to_array(params:get(n(i, "note")), scale))
+        local hz = music.note_num_to_freq(params:get(n(i, "note")))
         osc.send({"localhost", 57120}, "/emplaitress/perc", {
             music.freq_to_note_num(hz), --pitch
             params:get(n(i, "model")) - 1, --engine
@@ -105,7 +104,7 @@ function add_plaits(i)
         })
     end)
     params:set_action(n(i, "gate"), function (g)
-        local hz = music.note_num_to_freq(music.snap_note_to_array(params:get(n(i, "note")), scale))
+        local hz = music.note_num_to_freq(params:get(n(i, "note")))
         if g > 0 then
             if plaits_note[i] then
                 osc.send({"localhost", 57120}, "/emplaitress/note_off", {
@@ -147,11 +146,11 @@ function add_plaits(i)
     end)
 end
 
-for voice=1,4,1 do (function (i)
+
+function add_plaits_player(i)
     local player = {}
 
     function player:active()
-        print("activate", self.name)
         if self.name ~= nil then
             params:show(n("group", i))
             _menu.rebuild_params()
@@ -159,7 +158,6 @@ for voice=1,4,1 do (function (i)
     end
 
     function player:inactive()
-        print("deactivate", self.name)
         if self.name ~= nil then
             params:hide(n("group", i))
             _menu.rebuild_params()
@@ -275,39 +273,47 @@ for voice=1,4,1 do (function (i)
         end
         osc.send({"localhost", 57120}, "/emplaitress/note_off", {i - 1, note});
     end
+
+    function player:add_params()
+        add_plaits_params(i)
+    end
+
     if note_players == nil then
         note_players = {}
     end
     note_players["emplait "..i] = player
-end)(voice) end
+end
 
 function pre_init()
-    local hook = function ()
-        params:add_separator("emplaitress")
-        params:add_number("plaits_root", "root", 1, 12, 12, function(p)
-            return music.note_num_to_name(p:get())
-        end)
-        params:add_option("plaits_scale", "scale", scale_names, 1)
-        params:set_action("plaits_scale", function ()
-            local s = scale_names[params:get("plaits_scale")]
-            scale = music.generate_scale(params:get("plaits_root"), s, 8)
-        end)
-        params:set_action("plaits_root", function ()
-            local s = scale_names[params:get("plaits_scale")]
-            scale = music.generate_scale(params:get("plaits_root"), s, 8)
-        end)
-        if matrix ~= nil then
-            matrix:defer_bang("plaits_root")
-        end
-        for i=1,4,1 do
-            add_plaits(i)
-        end
+    for v=1,4 do
+        add_plaits_player(v)
     end
-    if matrix then
-        matrix:add_post_init_hook(hook)
-    else
-        hook()
-    end
+    -- local hook = function ()
+    --     params:add_separator("emplaitress")
+    --     params:add_number("plaits_root", "root", 1, 12, 12, function(p)
+    --         return music.note_num_to_name(p:get())
+    --     end)
+    --     params:add_option("plaits_scale", "scale", scale_names, 1)
+    --     params:set_action("plaits_scale", function ()
+    --         local s = scale_names[params:get("plaits_scale")]
+    --         scale = music.generate_scale(params:get("plaits_root"), s, 8)
+    --     end)
+    --     params:set_action("plaits_root", function ()
+    --         local s = scale_names[params:get("plaits_scale")]
+    --         scale = music.generate_scale(params:get("plaits_root"), s, 8)
+    --     end)
+    --     if matrix ~= nil then
+    --         matrix:defer_bang("plaits_root")
+    --     end
+    --     for i=1,4,1 do
+    --         add_plaits(i)
+    --     end
+    -- end
+    -- if matrix then
+    --     matrix:add_post_init_hook(hook)
+    -- else
+    --     hook()
+    -- end
 end
 
 mod.hook.register("script_pre_init", "emplaitress pre init", pre_init)
