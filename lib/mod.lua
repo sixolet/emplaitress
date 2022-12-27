@@ -288,32 +288,19 @@ function pre_init()
     for v=1,4 do
         add_plaits_player(v)
     end
-    -- local hook = function ()
-    --     params:add_separator("emplaitress")
-    --     params:add_number("plaits_root", "root", 1, 12, 12, function(p)
-    --         return music.note_num_to_name(p:get())
-    --     end)
-    --     params:add_option("plaits_scale", "scale", scale_names, 1)
-    --     params:set_action("plaits_scale", function ()
-    --         local s = scale_names[params:get("plaits_scale")]
-    --         scale = music.generate_scale(params:get("plaits_root"), s, 8)
-    --     end)
-    --     params:set_action("plaits_root", function ()
-    --         local s = scale_names[params:get("plaits_scale")]
-    --         scale = music.generate_scale(params:get("plaits_root"), s, 8)
-    --     end)
-    --     if matrix ~= nil then
-    --         matrix:defer_bang("plaits_root")
-    --     end
-    --     for i=1,4,1 do
-    --         add_plaits(i)
-    --     end
-    -- end
-    -- if matrix then
-    --     matrix:add_post_init_hook(hook)
-    -- else
-    --     hook()
-    -- end
 end
 
 mod.hook.register("script_pre_init", "emplaitress pre init", pre_init)
+
+mod.hook.register("system_post_startup", "emplaitress post startup", function()
+    local has_mi = os.execute('test -n "$(find /home/we/.local/share/SuperCollider/Extensions/ -name MiPlaits.sc)"')
+    if not has_mi then
+      print("emplaitress: installing mi-UGens")
+      os.execute("wget --quiet https://github.com/schollz/oomph/releases/download/prereqs/mi-UGens.762548fd3d1fcf30e61a3176c1b764ec1cc82020.tar.gz -P /tmp/")
+      os.execute("tar -xvzf /tmp/mi-UGens.762548fd3d1fcf30e61a3176c1b764ec1cc82020.tar.gz -C /home/we/.local/share/SuperCollider/Extensions/")
+      os.execute("rm /tmp/mi-UGens.762548fd3d1fcf30e61a3176c1b764ec1cc82020.tar.gz")
+      print("PLEASE RESTART")
+    else
+        print("emplaitress found mi ugens")
+    end
+end)
