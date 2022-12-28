@@ -18,7 +18,6 @@ for i = 1, #music.SCALES do
   table.insert(scale_names, music.SCALES[i].name)
 end
 
-
 local function n(i, s)
     return "plaits_"..s.."_"..i
 end
@@ -148,7 +147,9 @@ end
 
 
 function add_plaits_player(i)
-    local player = {}
+    local player = {
+        timbre_modulation=0,
+    }
 
     function player:active()
         if self.name ~= nil then
@@ -168,8 +169,21 @@ function add_plaits_player(i)
         osc.send({"localhost", 57120}, "/emplaitress/stop_all", {})
     end
 
+    function player:modulate(val)
+        self.timbre_modulation = val
+    end
+
     function player:set_slew(s)
         params:set(n(i, "slew"), s)
+    end
+
+    function player:describe()
+        return {
+            name = "emplait "..i,
+            supports_bend = false,
+            supports_slew = (params:get(n(i, "style")) == 3),
+            modulate_description = "timbre",
+        }
     end
 
     function player:note_on(note, vel)
@@ -178,7 +192,7 @@ function add_plaits_player(i)
                 music.freq_to_note_num(music.note_num_to_freq(note)), --pitch. Round trip through music lib for tuning mod support.
                 params:get(n(i, "model")) - 1, --engine
                 params:get(n(i, "harmonics")), --harm
-                params:get(n(i, "timbre")), --timbre
+                params:get(n(i, "timbre")) + self.timbre_modulation/2, --timbre
                 params:get(n(i, "morph")), --morph
                 params:get(n(i, "fm_mod")), --fm_mod
                 params:get(n(i, "timb_mod")), -- timb mod
@@ -197,7 +211,7 @@ function add_plaits_player(i)
                 music.freq_to_note_num(music.note_num_to_freq(note)), --pitch. Round trip through music lib for tuning mod support.
                 params:get(n(i, "model")) - 1, --engine
                 params:get(n(i, "harmonics")), --harm
-                params:get(n(i, "timbre")), --timbre
+                params:get(n(i, "timbre")) + self.timbre_modulation/2, --timbre
                 params:get(n(i, "morph")), --morph
                 params:get(n(i, "fm_mod")), --fm_mod
                 params:get(n(i, "timb_mod")), -- timb mod
@@ -221,7 +235,7 @@ function add_plaits_player(i)
                     music.freq_to_note_num(music.note_num_to_freq(note)), --pitch. Round trip through music lib for tuning mod support.
                     params:get(n(i, "model")) - 1, --engine
                     params:get(n(i, "harmonics")), --harm
-                    params:get(n(i, "timbre")), --timbre
+                    params:get(n(i, "timbre")) + self.timbre_modulation/2, --timbre
                     params:get(n(i, "morph")), --morph
                     params:get(n(i, "fm_mod")), --fm_mod
                     params:get(n(i, "timb_mod")), -- timb mod
@@ -245,7 +259,7 @@ function add_plaits_player(i)
                     music.freq_to_note_num(music.note_num_to_freq(note)), --pitch. Round trip through music lib for tuning mod support.
                     params:get(n(i, "model")) - 1, --engine
                     params:get(n(i, "harmonics")), --harm
-                    params:get(n(i, "timbre")), --timbre
+                    params:get(n(i, "timbre")) + self.timbre_modulation/2, --timbre
                     params:get(n(i, "morph")), --morph
                     params:get(n(i, "fm_mod")), --fm_mod
                     params:get(n(i, "timb_mod")), -- timb mod
