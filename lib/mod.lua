@@ -50,6 +50,7 @@ local function add_plaits_params(i)
             params:hide(n(i, "slew"))
         end
         _menu.rebuild_params()
+        osc.send({"localhost", 57120}, "/emplaitress/stop_all", {})
     end)
     if matrix then
         matrix:defer_bang(n(i, "style"))
@@ -282,9 +283,6 @@ function add_plaits_player(i)
 
     function player:note_off(note)
         -- pass, for perc.
-        if self.current_note and self.current_note == note then
-            self.current_note = nil
-        end
         osc.send({"localhost", 57120}, "/emplaitress/note_off", {i - 1, note});
     end
 

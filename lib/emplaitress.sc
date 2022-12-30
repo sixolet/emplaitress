@@ -1,8 +1,9 @@
 Emplaitress {
-    classvar <notes, <groups;
+    classvar <notes, <inverse, <groups;
 
     *initClass {
         notes = 6.collect { Dictionary.new};
+		inverse = 6.collect {IdentityDictionary.new};
         
         StartUp.add {
             groups = 6.collect { Group.new(server: Server.default) };        
@@ -57,14 +58,30 @@ Emplaitress {
 	    	    var args = [[\pitch, \engine, \harm, \timbre, \morph, \fm_mod, \timb_mod, \morph_mod, \decay, \lpg_color, \mul, \aux_mix, \gain, \pan], msg[1..]].lace;
 	    	    Synth.new(\plaitsPerc, args);
 	    	}, "/emplaitress/perc");
-	    	OSCFunc.new({ |msg, time, addr, recvPort|
+	    	OSCFunc.new({ |msg, time, addr, recvPort|			
 	    	    var voice = msg[1].asInteger;
 	    	    var note = msg[2].asInteger;
 	    	    var args = [[\pitch, \engine, \harm, \timbre, \morph, \fm_mod, \timb_mod, \morph_mod, \attack, \decay, \sustain, \release, \lpg_color, \mul, \aux_mix, \gain, \pan], msg[3..]].lace;
+				var syn;
+				syn = Synth.new(\plaitsADSR, args, target: groups[voice]);
+				syn.onFree({
+					// 2-way dict bookeeping.
+					var curNote;
+					curNote = inverse[voice][syn];
+
+					inverse[voice].removeAt(syn);
+					if (notes[voice][curNote] === syn, {
+						notes[voice].removeAt(curNote);
+					});
+				});
 	    	    if (notes[voice].includesKey(note), {
-	    	        notes[voice][note].set(\gate, 0);
+					var toEnd = notes[voice][note];
+	    	        toEnd.set(\gate, 0);
 	    	    });
-	    	    notes[voice].put(note, Synth.new(\plaitsADSR, args, target: groups[voice]));
+
+				// 2-way dict bookeeping.
+	    	    notes[voice].put(note, syn);
+				inverse[voice].put(syn, note);
 	    	}, "emplaitress/note_on");
 	    	OSCFunc.new({ |msg, time, addr, recvPort|
 	    	    var voice = msg[1].asInteger;
@@ -75,13 +92,36 @@ Emplaitress {
 					\timb_mod, \morph_mod, \attack, \decay, \sustain, 
 					\release, \lpg_color, \mul, \aux_mix, \gain, \pan, \pitch_lag], 
 					msg[4..]].lace;
+				//"modify % to %\n".postf(note, new_note);
 	    	    if (notes[voice].includesKey(note), {
-	    	        notes[voice][note].set(*args);
-					notes[voice].put(new_note, notes[voice][note]);
+					var syn = notes[voice][note];
+					//"modifying %\n".postf(syn.nodeID);
+	    	        syn.set(\gate, 1.0, *args);
+					notes[voice].put(new_note, syn);
 					if(note != new_note, {
 						notes[voice].removeAt(note);
+						inverse[voice].put(syn, new_note)
 					});
-	    	    });
+	    	    }, {
+					// Old voice has expired add new one.
+					var syn = Synth.new(\plaitsADSR, args, target: groups[voice]);
+					//"replacing with %\n".postf(syn.nodeID);
+					syn.onFree({
+						// 2-way dict bookeeping.
+						var curNote;
+						//"freed %".postf(syn.nodeID);
+						curNote = inverse[voice][syn];
+
+						inverse[voice].removeAt(syn);
+						if (notes[voice][curNote] === syn, {
+							notes[voice].removeAt(curNote);
+						});
+					});
+
+					// 2-way dict bookeeping.
+		    	    notes[voice].put(new_note, syn);
+					inverse[voice].put(syn, new_note);
+					});
 	    	}, "emplaitress/note_mod");
 
 			OSCFunc.new({|msg, time, addr, recvPort|
@@ -89,16 +129,19 @@ Emplaitress {
 					active.keysValuesDo {|note, syn|
 						syn.set(\gate, 0);
 						active.removeAt(note);
+						inverse.removeAt(syn);
 					};
 				};
 			}, "emplaitress/stop_all");
-
             OSCFunc.new({ |msg, time, addr, recvPort|
                 var voice = msg[1].asInteger;
                 var note = msg[2].asInteger;
+				//"off %\n".postf(note);
                 if (notes[voice].includesKey(note), {
+					var cur = notes[voice][note];
+					//"ending %s\n".postf(cur.nodeID);
                     notes[voice][note].set(\gate, 0);
-                    notes[voice].removeAt(note);
+                    //notes[voice].removeAt(note);
                 });
             }, "/emplaitress/note_off");
         }
