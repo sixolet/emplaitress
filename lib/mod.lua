@@ -5,9 +5,10 @@ if not status then
     matrix = nil
 end
 
-local models = {"classic analog", "waveshaping", "fm", "formant", "harmonic", "wavetable", "chord", "speech", "swarm", "noise", "particle", "string", "modal", "kick", "snare", "hat"}
+local models = { "classic analog", "waveshaping", "fm", "formant", "harmonic", "wavetable", "chord", "speech", "swarm",
+    "noise", "particle", "string", "modal", "kick", "snare", "hat" }
 
-local style_opts = {"perc", "poly", "mono"}
+local style_opts = { "perc", "poly", "mono" }
 
 local scale = music.generate_scale(12, "Major", 8)
 
@@ -15,15 +16,15 @@ local plaits_note = {}
 
 local scale_names = {}
 for i = 1, #music.SCALES do
-  table.insert(scale_names, music.SCALES[i].name)
+    table.insert(scale_names, music.SCALES[i].name)
 end
 
 local function n(i, s)
-    return "plaits_"..s.."_"..i
+    return "plaits_" .. s .. "_" .. i
 end
 
 local function add_plaits_params(i)
-    params:add_group(n("group", i), "emplait voice "..i, 22)
+    params:add_group(n("group", i), "emplait voice " .. i, 22)
     params:hide(n("group", i))
     params:add_option(n(i, "style"), "style", style_opts, 1)
     params:set_action(n(i, "style"), function(s)
@@ -50,7 +51,7 @@ local function add_plaits_params(i)
             params:hide(n(i, "slew"))
         end
         _menu.rebuild_params()
-        osc.send({"localhost", 57120}, "/emplaitress/stop_all", {})
+        osc.send({ "localhost", 57120 }, "/emplaitress/stop_all", {})
     end)
     if matrix then
         matrix:defer_bang(n(i, "style"))
@@ -84,9 +85,9 @@ local function add_plaits_params(i)
 
 
 
-    params:set_action(n(i, "trigger"), function ()
+    params:set_action(n(i, "trigger"), function()
         local hz = music.note_num_to_freq(params:get(n(i, "note")))
-        osc.send({"localhost", 57120}, "/emplaitress/perc", {
+        osc.send({ "localhost", 57120 }, "/emplaitress/perc", {
             music.freq_to_note_num(hz), --pitch
             params:get(n(i, "model")) - 1, --engine
             params:get(n(i, "harmonics")), --harm
@@ -103,17 +104,17 @@ local function add_plaits_params(i)
             params:get(n(i, "pan")) -- pan
         })
     end)
-    params:set_action(n(i, "gate"), function (g)
+    params:set_action(n(i, "gate"), function(g)
         local hz = music.note_num_to_freq(params:get(n(i, "note")))
         if g > 0 then
             if plaits_note[i] then
-                osc.send({"localhost", 57120}, "/emplaitress/note_off", {
+                osc.send({ "localhost", 57120 }, "/emplaitress/note_off", {
                     i - 1,
                     plaits_note[i],
                 });
             end
             plaits_note[i] = params:get(n(i, "note"))
-            osc.send({"localhost", 57120}, "/emplaitress/note_on", {
+            osc.send({ "localhost", 57120 }, "/emplaitress/note_on", {
                 i - 1, -- voice
                 params:get(n(i, "note")), -- note
                 music.freq_to_note_num(hz), --pitch
@@ -137,7 +138,7 @@ local function add_plaits_params(i)
         else
             -- off
             if plaits_note[i] then
-                osc.send({"localhost", 57120}, "/emplaitress/note_off", {
+                osc.send({ "localhost", 57120 }, "/emplaitress/note_off", {
                     i - 1,
                     plaits_note[i],
                 });
@@ -146,10 +147,16 @@ local function add_plaits_params(i)
     end)
 end
 
+local function remap_note(note)
+    local upper = music.note_num_to_freq(math.ceil(note))
+    local lower = music.note_num_to_freq(math.floor(note))
+    local portion = note % 1
+    return (1 - portion) * lower + portion * upper
+end
 
 function add_plaits_player(i)
     local player = {
-        timbre_modulation=0,
+        timbre_modulation = 0,
     }
 
     function player:active()
@@ -167,7 +174,7 @@ function add_plaits_player(i)
     end
 
     function player:stop_all()
-        osc.send({"localhost", 57120}, "/emplaitress/stop_all", {})
+        osc.send({ "localhost", 57120 }, "/emplaitress/stop_all", {})
     end
 
     function player:modulate(val)
@@ -180,39 +187,81 @@ function add_plaits_player(i)
 
     function player:describe()
         return {
-            name = "emplait "..i,
+            name = "emplait " .. i,
             supports_bend = false,
             supports_slew = (params:get(n(i, "style")) == 3),
             modulate_description = "timbre",
+            note_mod_targets = { "amp", "timbre", "morph", "harmonics" }
         }
     end
 
-    function player:note_on(note, vel)
+    function player:pitch_bend(note, amount)
+        if params:get(n(i, "style")) == 2 or (params:get(n(i, "style")) == 3
+            and note == self.current_note) then
+            osc.send({ "localhost", 57120 }, "/emplaitress/note_simple_mod", {
+                i - 1,
+                note,
+                'pitch',
+                note + amount, --pitch. Round trip through music lib for tuning mod support.
+            })
+        end
+    end
+
+    function player:modulate_note(note, key, value)
+        if params:get(n(i, "style")) == 2 or (params:get(n(i, "style")) == 3
+            and note == self.current_note) then
+            local v = value
+            if key == "harmonics" or key == "timbre" or key == "morph" then
+                v = value + params:get(n(i, key))
+                if key == "harmonics" then
+                    key = "harm"
+                end
+            elseif key == "amp" then
+                v = util.clamp(value * params:get(n(i, key)), 0.01, 1)
+                key = "mul"
+            end
+
+            osc.send({ "localhost", 57120 }, "/emplaitress/note_simple_mod", {
+                i - 1,
+                note,
+                key,
+                v,
+            })
+        end
+    end
+
+    function player:note_on(note, vel, properties)
+        if properties == nil then
+            properties = {}
+        end
         if params:get(n(i, "style")) == 1 then
-            osc.send({"localhost", 57120}, "/emplaitress/perc", {
+            local prop_timbre = properties.timbre or 0
+            local prop_morph = properties.morph or 0
+            local prop_harmonics = properties.harmonics or 0
+            osc.send({ "localhost", 57120 }, "/emplaitress/perc", {
                 music.freq_to_note_num(music.note_num_to_freq(note)), --pitch. Round trip through music lib for tuning mod support.
                 params:get(n(i, "model")) - 1, --engine
-                params:get(n(i, "harmonics")), --harm
-                params:get(n(i, "timbre")) + self.timbre_modulation/2, --timbre
-                params:get(n(i, "morph")), --morph
+                params:get(n(i, "harmonics")) + prop_harmonics, --harm
+                params:get(n(i, "timbre")) + self.timbre_modulation / 2 + prop_timbre, --timbre
+                params:get(n(i, "morph")) + prop_morph, --morph
                 params:get(n(i, "fm_mod")), --fm_mod
                 params:get(n(i, "timb_mod")), -- timb mod
                 params:get(n(i, "morph_mod")), --morph mod
                 params:get(n(i, "decay")), --decay
                 params:get(n(i, "lpg_color")), --lpg_color
-                params:get(n(i, "amp"))*vel*vel, --mul
+                params:get(n(i, "amp")) * vel * vel, --mul
                 params:get(n(i, "aux")), --aux_mix
                 params:get(n(i, "gain")), -- post-plaits gain
                 params:get(n(i, "pan")) -- pan
             })
         elseif params:get(n(i, "style")) == 2 then
-            osc.send({"localhost", 57120}, "/emplaitress/note_on", {
+            osc.send({ "localhost", 57120 }, "/emplaitress/note_on", {
                 i - 1,
                 note,
                 music.freq_to_note_num(music.note_num_to_freq(note)), --pitch. Round trip through music lib for tuning mod support.
                 params:get(n(i, "model")) - 1, --engine
                 params:get(n(i, "harmonics")), --harm
-                params:get(n(i, "timbre")) + self.timbre_modulation/2, --timbre
+                params:get(n(i, "timbre")) + self.timbre_modulation / 2, --timbre
                 params:get(n(i, "morph")), --morph
                 params:get(n(i, "fm_mod")), --fm_mod
                 params:get(n(i, "timb_mod")), -- timb mod
@@ -220,23 +269,23 @@ function add_plaits_player(i)
                 params:get(n(i, "a")), --attack
                 params:get(n(i, "d")), --decay
                 params:get(n(i, "s")), --sustain
-                params:get(n(i, "r")), --release                
+                params:get(n(i, "r")), --release
                 params:get(n(i, "lpg_color")), --lpg_color
-                params:get(n(i, "amp"))*vel*vel, --mul
+                params:get(n(i, "amp")) * vel * vel, --mul
                 params:get(n(i, "aux")), --aux_mix
                 params:get(n(i, "gain")), -- post-plaits gain
                 params:get(n(i, "pan")) -- pan
             })
         elseif params:get(n(i, "style")) == 3 then
             if self.current_note then
-                osc.send({"localhost", 57120}, "/emplaitress/note_mod", {
+                osc.send({ "localhost", 57120 }, "/emplaitress/note_mod", {
                     i - 1,
                     self.current_note,
                     note,
                     music.freq_to_note_num(music.note_num_to_freq(note)), --pitch. Round trip through music lib for tuning mod support.
                     params:get(n(i, "model")) - 1, --engine
                     params:get(n(i, "harmonics")), --harm
-                    params:get(n(i, "timbre")) + self.timbre_modulation/2, --timbre
+                    params:get(n(i, "timbre")) + self.timbre_modulation / 2, --timbre
                     params:get(n(i, "morph")), --morph
                     params:get(n(i, "fm_mod")), --fm_mod
                     params:get(n(i, "timb_mod")), -- timb mod
@@ -244,9 +293,9 @@ function add_plaits_player(i)
                     params:get(n(i, "a")), --attack
                     params:get(n(i, "d")), --decay
                     params:get(n(i, "s")), --sustain
-                    params:get(n(i, "r")), --release                
+                    params:get(n(i, "r")), --release
                     params:get(n(i, "lpg_color")), --lpg_color
-                    params:get(n(i, "amp"))*vel*vel, --mul
+                    params:get(n(i, "amp")) * vel * vel, --mul
                     params:get(n(i, "aux")), --aux_mix
                     params:get(n(i, "gain")), -- post-plaits gain
                     params:get(n(i, "pan")), -- pan
@@ -254,13 +303,13 @@ function add_plaits_player(i)
                 })
                 self.current_note = note
             else
-                osc.send({"localhost", 57120}, "/emplaitress/note_on", {
+                osc.send({ "localhost", 57120 }, "/emplaitress/note_on", {
                     i - 1,
                     note,
                     music.freq_to_note_num(music.note_num_to_freq(note)), --pitch. Round trip through music lib for tuning mod support.
                     params:get(n(i, "model")) - 1, --engine
                     params:get(n(i, "harmonics")), --harm
-                    params:get(n(i, "timbre")) + self.timbre_modulation/2, --timbre
+                    params:get(n(i, "timbre")) + self.timbre_modulation / 2, --timbre
                     params:get(n(i, "morph")), --morph
                     params:get(n(i, "fm_mod")), --fm_mod
                     params:get(n(i, "timb_mod")), -- timb mod
@@ -268,9 +317,9 @@ function add_plaits_player(i)
                     params:get(n(i, "a")), --attack
                     params:get(n(i, "d")), --decay
                     params:get(n(i, "s")), --sustain
-                    params:get(n(i, "r")), --release                
+                    params:get(n(i, "r")), --release
                     params:get(n(i, "lpg_color")), --lpg_color
-                    params:get(n(i, "amp"))*vel*vel, --mul
+                    params:get(n(i, "amp")) * vel * vel, --mul
                     params:get(n(i, "aux")), --aux_mix
                     params:get(n(i, "gain")), -- post-plaits gain
                     params:get(n(i, "pan")), -- pan
@@ -283,7 +332,7 @@ function add_plaits_player(i)
 
     function player:note_off(note)
         -- pass, for perc.
-        osc.send({"localhost", 57120}, "/emplaitress/note_off", {i - 1, note});
+        osc.send({ "localhost", 57120 }, "/emplaitress/note_off", { i - 1, note });
     end
 
     function player:add_params()
@@ -293,11 +342,11 @@ function add_plaits_player(i)
     if note_players == nil then
         note_players = {}
     end
-    note_players["emplait "..i] = player
+    note_players["emplait " .. i] = player
 end
 
 function pre_init()
-    for v=1,4 do
+    for v = 1, 4 do
         add_plaits_player(v)
     end
 end
@@ -307,11 +356,11 @@ mod.hook.register("script_pre_init", "emplaitress pre init", pre_init)
 mod.hook.register("system_post_startup", "emplaitress post startup", function()
     local has_mi = os.execute('test -n "$(find /home/we/.local/share/SuperCollider/Extensions/ -name MiPlaits.sc)"')
     if not has_mi then
-      print("emplaitress: installing mi-UGens")
-      os.execute("wget --quiet https://github.com/schollz/oomph/releases/download/prereqs/mi-UGens.762548fd3d1fcf30e61a3176c1b764ec1cc82020.tar.gz -P /tmp/")
-      os.execute("tar -xvzf /tmp/mi-UGens.762548fd3d1fcf30e61a3176c1b764ec1cc82020.tar.gz -C /home/we/.local/share/SuperCollider/Extensions/")
-      os.execute("rm /tmp/mi-UGens.762548fd3d1fcf30e61a3176c1b764ec1cc82020.tar.gz")
-      print("PLEASE RESTART")
+        print("emplaitress: installing mi-UGens")
+        os.execute("wget --quiet https://github.com/schollz/oomph/releases/download/prereqs/mi-UGens.762548fd3d1fcf30e61a3176c1b764ec1cc82020.tar.gz -P /tmp/")
+        os.execute("tar -xvzf /tmp/mi-UGens.762548fd3d1fcf30e61a3176c1b764ec1cc82020.tar.gz -C /home/we/.local/share/SuperCollider/Extensions/")
+        os.execute("rm /tmp/mi-UGens.762548fd3d1fcf30e61a3176c1b764ec1cc82020.tar.gz")
+        print("PLEASE RESTART")
     else
         print("emplaitress found mi ugens")
     end

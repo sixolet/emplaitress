@@ -19,9 +19,9 @@ Emplaitress {
 	    	            morph: morph,
 	    	            trigger: Impulse.kr(0),
 	    	            fm_mod: fm_mod,
-	    	            timb_mod: timb_mod, 
-	    	            morph_mod: morph_mod, 
-	    	            decay: decay, 
+	    	            timb_mod: timb_mod,
+	    	            morph_mod: morph_mod,
+	    	            decay: decay,
 	    	            lpg_colour: lpg_color, 
 	    	            mul: mul);
 	    	    sound = SelectX.ar(aux_mix, sound);
@@ -83,6 +83,18 @@ Emplaitress {
 	    	    notes[voice].put(note, syn);
 				inverse[voice].put(syn, note);
 	    	}, "emplaitress/note_on");
+	    	OSCFunc.new({ |msg, time, addr, recvPort|			
+	    	    var voice = msg[1].asInteger;
+	    	    var note = msg[2].asInteger;
+				var key = msg[3].asString.asSymbol;
+				var val = msg[4].asFloat;
+				// "% % % %\n".postf(voice, note, key, val);
+	    	    if (notes[voice].includesKey(note), {
+					var syn = notes[voice][note];
+					//"modifying %\n".postf(syn.nodeID);
+	    	        syn.set(key, val);
+	    	    });			
+	    	}, "emplaitress/note_simple_mod");			
 	    	OSCFunc.new({ |msg, time, addr, recvPort|
 	    	    var voice = msg[1].asInteger;
 	    	    var note = msg[2].asInteger;
