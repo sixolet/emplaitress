@@ -217,7 +217,7 @@ function add_plaits_player(i)
                     key = "harm"
                 end
             elseif key == "amp" then
-                v = util.clamp(value * params:get(n(i, key)), 0.01, 1)
+                v = util.clamp(value^(3/2) * params:get(n(i, key)), 0.003, 1)
                 key = "mul"
             end
 
