@@ -6,8 +6,12 @@ Emplaitress {
 		inverse = 6.collect {IdentityDictionary.new};
         
         StartUp.add {
-            groups = 6.collect { Group.new(server: Server.default) };        
-            "ALL HAIL THE EMPLAITRESS".postln;
+			(Routine.new {
+				10.yield;
+				Server.default.sync;
+	            groups = 6.collect { Group.new };        
+    	        "ALL HAIL THE EMPLAITRESS".postln;
+			}).play;
             SynthDef(\plaitsPerc, {
                 |out, pitch=60.0, engine=0, harm=0.1, timbre=0.5, morph=0.5, fm_mod=0.0, timb_mod=0.0,
 	    	        morph_mod=0.0, decay=0.5, lpg_color=0.5, mul=1.0, aux_mix=0.0, gain=1.0, pan=0.0|
@@ -63,6 +67,7 @@ Emplaitress {
 	    	    var note = msg[2].asInteger;
 	    	    var args = [[\pitch, \engine, \harm, \timbre, \morph, \fm_mod, \timb_mod, \morph_mod, \attack, \decay, \sustain, \release, \lpg_color, \mul, \aux_mix, \gain, \pan], msg[3..]].lace;
 				var syn;
+				//"on voice % group %\n".postf(voice, groups[voice]);
 				syn = Synth.new(\plaitsADSR, args, target: groups[voice]);
 				syn.onFree({
 					// 2-way dict bookeeping.
