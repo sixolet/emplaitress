@@ -1,9 +1,10 @@
 Emplaitress {
-    classvar <notes, <inverse, <groups;
+    classvar <notes, <inverse, <groups, <lastAction;
 
     *initClass {
         notes = 6.collect { Dictionary.new};
 		inverse = 6.collect {IdentityDictionary.new};
+		lastAction = 0;
         
         StartUp.add {
 			(Routine.new {
@@ -62,13 +63,18 @@ Emplaitress {
 	    	    var args = [[\pitch, \engine, \harm, \timbre, \morph, \fm_mod, \timb_mod, \morph_mod, \decay, \lpg_color, \mul, \aux_mix, \gain, \pan], msg[1..]].lace;
 	    	    Synth.new(\plaitsPerc, args);
 	    	}, "/emplaitress/perc");
-	    	OSCFunc.new({ |msg, time, addr, recvPort|			
+	    	OSCFunc.new({ |msg, time, addr, recvPort|
 	    	    var voice = msg[1].asInteger;
 	    	    var note = msg[2].asInteger;
 	    	    var args = [[\pitch, \engine, \harm, \timbre, \morph, \fm_mod, \timb_mod, \morph_mod, \attack, \decay, \sustain, \release, \lpg_color, \mul, \aux_mix, \gain, \pan], msg[3..]].lace;
 				var syn;
-				//"on voice % group %\n".postf(voice, groups[voice]);
+				(Routine {
+				while({thisThread.clock.seconds - lastAction < 0.003}, {
+					(0.001).yield;
+				});
+				// "on voice % group %, %\n".postf(voice, groups[voice], thisThread.clock.seconds);
 				syn = Synth.new(\plaitsADSR, args, target: groups[voice]);
+				lastAction = thisThread.clock.seconds;
 				syn.onFree({
 					// 2-way dict bookeeping.
 					var curNote;
@@ -87,6 +93,7 @@ Emplaitress {
 				// 2-way dict bookeeping.
 	    	    notes[voice].put(note, syn);
 				inverse[voice].put(syn, note);
+				}).play;
 	    	}, "emplaitress/note_on");
 	    	OSCFunc.new({ |msg, time, addr, recvPort|			
 	    	    var voice = msg[1].asInteger;
