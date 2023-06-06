@@ -24,7 +24,7 @@ local function n(i, s)
 end
 
 local function add_plaits_params(i)
-    params:add_group(n("group", i), "emplait voice " .. i, 22)
+    params:add_group(n("group", i), "emplait voice " .. i, 24)
     params:hide(n("group", i))
     params:add_option(n(i, "style"), "style", style_opts, 1)
     params:set_action(n(i, "style"), function(s)
@@ -82,7 +82,8 @@ local function add_plaits_params(i)
     params:add_control(n(i, "gain"), "gain", controlspec.new(0, 3, "lin", 0, 1))
     params:add_control(n(i, "pan"), "pan", controlspec.new(-1, 1, "lin", 0, 0))
     params:add_control(n(i, "slew"), "slew", controlspec.new(0, 1, "lin", 0, 0))
-
+    params:add_control(n(i, "send_a"), "send a", controlspec.new(0, 1, "lin", 0, 0))
+    params:add_control(n(i, "send_b"), "send b", controlspec.new(0, 1, "lin", 0, 0))
 
 
     params:set_action(n(i, "trigger"), function()
@@ -101,7 +102,9 @@ local function add_plaits_params(i)
             params:get(n(i, "amp")), --mul
             params:get(n(i, "aux")), --aux_mix
             params:get(n(i, "gain")), -- post-plaits gain
-            params:get(n(i, "pan")) -- pan
+            params:get(n(i, "pan")), -- pan
+            params:get(n(i, "send_a")),
+            params:get(n(i, "send_b"))
         })
     end)
     params:set_action(n(i, "gate"), function(g)
@@ -133,7 +136,9 @@ local function add_plaits_params(i)
                 params:get(n(i, "amp")), --mul
                 params:get(n(i, "aux")), --aux_mix
                 params:get(n(i, "gain")), -- post-plaits gain
-                params:get(n(i, "pan")) -- pan
+                params:get(n(i, "pan")), -- pan
+                params:get(n(i, "send_a")),
+                params:get(n(i, "send_b"))
             })
         else
             -- off
@@ -148,8 +153,8 @@ local function add_plaits_params(i)
 end
 
 local function remap_note(note)
-    local upper = music.note_num_to_freq(math.ceil(note))
-    local lower = music.note_num_to_freq(math.floor(note))
+    local upper = music.note_num_to_freq(math.ceil(note%128))
+    local lower = music.note_num_to_freq(math.floor(note%128))
     local portion = note % 1
     return (1 - portion) * lower + portion * upper
 end
@@ -239,7 +244,7 @@ function add_plaits_player(i)
             local prop_morph = properties.morph or 0
             local prop_harmonics = properties.harmonics or 0
             osc.send({ "localhost", 57120 }, "/emplaitress/perc", {
-                music.freq_to_note_num(music.note_num_to_freq(note)), --pitch. Round trip through music lib for tuning mod support.
+                music.freq_to_note_num(music.note_num_to_freq(note%128)), --pitch. Round trip through music lib for tuning mod support.
                 params:get(n(i, "model")) - 1, --engine
                 params:get(n(i, "harmonics")) + prop_harmonics, --harm
                 params:get(n(i, "timbre")) + self.timbre_modulation / 2 + prop_timbre, --timbre
@@ -252,7 +257,9 @@ function add_plaits_player(i)
                 params:get(n(i, "amp")) * vel * vel, --mul
                 params:get(n(i, "aux")), --aux_mix
                 params:get(n(i, "gain")), -- post-plaits gain
-                params:get(n(i, "pan")) -- pan
+                params:get(n(i, "pan")), -- pan
+                params:get(n(i, "send_a")),
+                params:get(n(i, "send_b"))
             })
         elseif params:get(n(i, "style")) == 2 then
             osc.send({ "localhost", 57120 }, "/emplaitress/note_on", {
@@ -274,7 +281,9 @@ function add_plaits_player(i)
                 params:get(n(i, "amp")) * vel * vel, --mul
                 params:get(n(i, "aux")), --aux_mix
                 params:get(n(i, "gain")), -- post-plaits gain
-                params:get(n(i, "pan")) -- pan
+                params:get(n(i, "pan")), -- pan
+                params:get(n(i, "send_a")),
+                params:get(n(i, "send_b"))
             })
         elseif params:get(n(i, "style")) == 3 then
             if self.current_note then
@@ -282,7 +291,7 @@ function add_plaits_player(i)
                     i - 1,
                     self.current_note,
                     note,
-                    music.freq_to_note_num(music.note_num_to_freq(note)), --pitch. Round trip through music lib for tuning mod support.
+                    music.freq_to_note_num(music.note_num_to_freq(note%128)), --pitch. Round trip through music lib for tuning mod support.
                     params:get(n(i, "model")) - 1, --engine
                     params:get(n(i, "harmonics")), --harm
                     params:get(n(i, "timbre")) + self.timbre_modulation / 2, --timbre
@@ -299,14 +308,16 @@ function add_plaits_player(i)
                     params:get(n(i, "aux")), --aux_mix
                     params:get(n(i, "gain")), -- post-plaits gain
                     params:get(n(i, "pan")), -- pan
-                    params:get(n(i, "slew")) -- pitch_lag
+                    params:get(n(i, "slew")), -- pitch_lag
+                    params:get(n(i, "send_a")),
+                    params:get(n(i, "send_b"))
                 })
                 self.current_note = note
             else
                 osc.send({ "localhost", 57120 }, "/emplaitress/note_on", {
                     i - 1,
                     note,
-                    music.freq_to_note_num(music.note_num_to_freq(note)), --pitch. Round trip through music lib for tuning mod support.
+                    music.freq_to_note_num(music.note_num_to_freq(note%128)), --pitch. Round trip through music lib for tuning mod support.
                     params:get(n(i, "model")) - 1, --engine
                     params:get(n(i, "harmonics")), --harm
                     params:get(n(i, "timbre")) + self.timbre_modulation / 2, --timbre
@@ -323,7 +334,9 @@ function add_plaits_player(i)
                     params:get(n(i, "aux")), --aux_mix
                     params:get(n(i, "gain")), -- post-plaits gain
                     params:get(n(i, "pan")), -- pan
-                    params:get(n(i, "slew")) -- pitch_lag
+                    params:get(n(i, "slew")), -- pitch_lag
+                    params:get(n(i, "send_a")),
+                    params:get(n(i, "send_b"))
                 })
                 self.current_note = note
             end

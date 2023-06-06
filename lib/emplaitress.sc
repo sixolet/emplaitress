@@ -15,7 +15,7 @@ Emplaitress {
 			}).play;
             SynthDef(\plaitsPerc, {
                 |out, pitch=60.0, engine=0, harm=0.1, timbre=0.5, morph=0.5, fm_mod=0.0, timb_mod=0.0,
-	    	        morph_mod=0.0, decay=0.5, lpg_color=0.5, mul=1.0, aux_mix=0.0, gain=1.0, pan=0.0|
+	    	        morph_mod=0.0, decay=0.5, lpg_color=0.5, mul=1.0, aux_mix=0.0, gain=1.0, pan=0.0, sendA=0, sendB=0, sendABus=0, sendBBus=0|
 	    	    var sound = MiPlaits.ar(
 	    	            pitch: pitch, 
 	    	            engine: engine, 
@@ -33,13 +33,16 @@ Emplaitress {
 	    	    sound = LeakDC.ar(sound);
 	    	    DetectSilence.ar(sound + Impulse.ar(0), amp: 0.0005, time: 0.1, doneAction: Done.freeSelf);
 	    	    sound = (gain*sound).softclip;
-	    	    Out.ar(out, Pan2.ar(sound, pan));
+				sound = Pan2.ar(sound, pan);
+	    	    Out.ar(out, sound);
+				Out.ar(sendABus, sendA*sound);
+				Out.ar(sendBBus, sendB*sound);
 	        }).add;
 	        
             SynthDef(\plaitsADSR, {
                 |out, pitch=60.0, engine=0, harm=0.1, timbre=0.5, morph=0.5, fm_mod=0.0, timb_mod=0.0,
 	    	        morph_mod=0.0, attack=0.1, decay=0.5, sustain=0.5, release=0.5, lpg_color=0.5,
-					mul=1.0, aux_mix=0.0, gain=1.0, pan=0.0, gate=1, pitch_lag=0.0|
+					mul=1.0, aux_mix=0.0, gain=1.0, pan=0.0, gate=1, pitch_lag=0.0, sendA=0, sendB=0, sendABus=0, sendBBus=0|
 	    	    var env = EnvGen.kr(Env.adsr(attack, decay, sustain, release), gate, doneAction: Done.none);
 	    	    var sound = MiPlaits.ar(
 	    	            pitch: pitch.lag(pitch_lag), 
@@ -56,24 +59,30 @@ Emplaitress {
 	    	    sound = OnePole.ar(sound, coef: (1 - env)*(1 - lpg_color));
 	    	    sound = (gain*sound).softclip;
 	    	    DetectSilence.ar(sound + Impulse.ar(0), amp: 0.0005, time: 0.1, doneAction: Done.freeSelf);
-	    	    Out.ar(out, Pan2.ar(sound, pan));
+				sound = Pan2.ar(sound, pan);
+	    	    Out.ar(out, sound);
+				Out.ar(sendABus, sendA*sound);
+				Out.ar(sendBBus, sendB*sound);				
 	        }).add;	        
 
 	    	OSCFunc.new({ |msg, time, addr, recvPort|
-	    	    var args = [[\pitch, \engine, \harm, \timbre, \morph, \fm_mod, \timb_mod, \morph_mod, \decay, \lpg_color, \mul, \aux_mix, \gain, \pan], msg[1..]].lace;
+	    	    var args = [[\pitch, \engine, \harm, \timbre, \morph, \fm_mod, \timb_mod, \morph_mod, \decay, \lpg_color, \mul, \aux_mix, \gain, \pan, \sendA, \sendB], msg[1..]].lace;
 	    	    Synth.new(\plaitsPerc, args);
 	    	}, "/emplaitress/perc");
 	    	OSCFunc.new({ |msg, time, addr, recvPort|
 	    	    var voice = msg[1].asInteger;
 	    	    var note = msg[2].asInteger;
-	    	    var args = [[\pitch, \engine, \harm, \timbre, \morph, \fm_mod, \timb_mod, \morph_mod, \attack, \decay, \sustain, \release, \lpg_color, \mul, \aux_mix, \gain, \pan], msg[3..]].lace;
+	    	    var args = [[\pitch, \engine, \harm, \timbre, \morph, \fm_mod, \timb_mod, \morph_mod, \attack, \decay, \sustain, \release, \lpg_color, \mul, \aux_mix, \gain, \pan, \sendA, \sendB], msg[3..]].lace;
 				var syn;
 				(Routine {
 				while({thisThread.clock.seconds - lastAction < 0.003}, {
 					(0.001).yield;
 				});
 				// "on voice % group %, %\n".postf(voice, groups[voice], thisThread.clock.seconds);
-				syn = Synth.new(\plaitsADSR, args, target: groups[voice]);
+				syn = Synth.new(
+					\plaitsADSR, 
+					args ++ [\sendABus, (~sendA ? Server.default.outputBus), \sendBBus, (~sendB ? Server.default.outputBus)], 
+					target: groups[voice]);
 				lastAction = thisThread.clock.seconds;
 				syn.onFree({
 					// 2-way dict bookeeping.
@@ -114,7 +123,7 @@ Emplaitress {
 	    	    var args = [[
 					\pitch, \engine, \harm, \timbre, \morph, \fm_mod, 
 					\timb_mod, \morph_mod, \attack, \decay, \sustain, 
-					\release, \lpg_color, \mul, \aux_mix, \gain, \pan, \pitch_lag], 
+					\release, \lpg_color, \mul, \aux_mix, \gain, \pan, \pitch_lag, \sendA, \sendB], 
 					msg[4..]].lace;
 				//"modify % to %\n".postf(note, new_note);
 	    	    if (notes[voice].includesKey(note), {
@@ -128,7 +137,10 @@ Emplaitress {
 					});
 	    	    }, {
 					// Old voice has expired add new one.
-					var syn = Synth.new(\plaitsADSR, args, target: groups[voice]);
+					var syn = Synth.new(
+						\plaitsADSR, 
+						args ++ [\sendABus, (~sendA ? Server.default.outputBus), \sendBBus, (~sendB ? Server.default.outputBus)],
+						target: groups[voice]);
 					//"replacing with %\n".postf(syn.nodeID);
 					syn.onFree({
 						// 2-way dict bookeeping.
