@@ -66,8 +66,15 @@ Emplaitress {
 	        }).add;	        
 
 	    	OSCFunc.new({ |msg, time, addr, recvPort|
-	    	    var args = [[\pitch, \engine, \harm, \timbre, \morph, \fm_mod, \timb_mod, \morph_mod, \decay, \lpg_color, \mul, \aux_mix, \gain, \pan, \sendA, \sendB], msg[1..]].lace;
-	    	    Synth.new(\plaitsPerc, args);
+	    	    var args = [
+					[\pitch, \engine, \harm, \timbre, \morph, \fm_mod, \timb_mod, \morph_mod, \decay, \lpg_color, \mul, \aux_mix, \gain, \pan, \sendA, \sendB], 
+					msg[1..]
+					].lace;
+	    	    Synth.new(
+					\plaitsPerc,
+					args ++ [
+						\sendABus, (~sendA ? Server.default.outputBus), 
+						\sendBBus, (~sendB ? Server.default.outputBus)]);
 	    	}, "/emplaitress/perc");
 	    	OSCFunc.new({ |msg, time, addr, recvPort|
 	    	    var voice = msg[1].asInteger;
