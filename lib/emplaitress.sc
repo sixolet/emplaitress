@@ -1,10 +1,9 @@
 Emplaitress {
-    classvar <notes, <inverse, <groups, <lastAction;
+    classvar <notes, <inverse, <groups;
 
     *initClass {
         notes = 6.collect { Dictionary.new};
 		inverse = 6.collect {IdentityDictionary.new};
-		lastAction = 0;
         
         StartUp.add {
 			(Routine.new {
@@ -29,7 +28,7 @@ Emplaitress {
 	    	            decay: decay,
 	    	            lpg_colour: lpg_color, 
 	    	            mul: mul);
-	    	    sound = SelectX.ar(aux_mix, sound);
+	    	    sound = ((1 - aux_mix) * sound[0]) + (aux_mix*sound[1]);
 	    	    sound = LeakDC.ar(sound);
 	    	    DetectSilence.ar(sound + Impulse.ar(0), amp: 0.0005, time: 0.1, doneAction: Done.freeSelf);
 	    	    sound = (gain*sound).softclip;
@@ -54,7 +53,7 @@ Emplaitress {
 	    	            fm_mod: fm_mod,
 	    	            lpg_colour: lpg_color, 
 	    	            mul: mul);
-	    	    sound = SelectX.ar(aux_mix, sound);
+	    	    sound = ((1 - aux_mix) * sound[0]) + (aux_mix*sound[1]);
 	    	    sound = LeakDC.ar(sound);
 	    	    sound = OnePole.ar(sound, coef: (1 - env)*(1 - lpg_color));
 	    	    sound = (gain*sound).softclip;
@@ -70,6 +69,7 @@ Emplaitress {
 					[\pitch, \engine, \harm, \timbre, \morph, \fm_mod, \timb_mod, \morph_mod, \decay, \lpg_color, \mul, \aux_mix, \gain, \pan, \sendA, \sendB], 
 					msg[1..]
 					].lace;
+				//"perc %".postf(msg[1]);
 	    	    Synth.new(
 					\plaitsPerc,
 					args ++ [
@@ -82,15 +82,11 @@ Emplaitress {
 	    	    var args = [[\pitch, \engine, \harm, \timbre, \morph, \fm_mod, \timb_mod, \morph_mod, \attack, \decay, \sustain, \release, \lpg_color, \mul, \aux_mix, \gain, \pan, \sendA, \sendB], msg[3..]].lace;
 				var syn;
 				(Routine {
-				while({thisThread.clock.seconds - lastAction < 0.003}, {
-					(0.001).yield;
-				});
 				// "on voice % group %, %\n".postf(voice, groups[voice], thisThread.clock.seconds);
 				syn = Synth.new(
 					\plaitsADSR, 
 					args ++ [\sendABus, (~sendA ? Server.default.outputBus), \sendBBus, (~sendB ? Server.default.outputBus)], 
 					target: groups[voice]);
-				lastAction = thisThread.clock.seconds;
 				syn.onFree({
 					// 2-way dict bookeeping.
 					var curNote;

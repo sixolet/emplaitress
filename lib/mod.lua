@@ -345,6 +345,7 @@ function add_plaits_player(i)
 
     function player:note_off(note)
         -- pass, for perc.
+        -- print("off", note)
         osc.send({ "localhost", 57120 }, "/emplaitress/note_off", { i - 1, note });
     end
 
