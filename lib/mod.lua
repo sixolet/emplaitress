@@ -1,8 +1,32 @@
 local music = require("musicutil")
 local mod = require 'core/mods'
+local filepath = "/home/we/dust/data/emplaitress/"
 local status, matrix = pcall(require, 'matrix/lib/matrix')
+
 if not status then
     matrix = nil
+end
+
+local function read_prefs()
+    prefs = {}
+    if util.file_exists(filepath.."prefs.data") then
+        prefs = tab.load(filepath.."prefs.data")
+        print('table >> read: ' .. filepath.."prefs.data")
+        voices = prefs.voices
+    else
+        voices = 4 --default # of voices
+    end
+end
+
+local function save_prefs()
+    local filepath = "/home/we/dust/data/emplaitress/"
+    local prefs = {}
+    if util.file_exists(filepath) == false then
+        util.make_dir(filepath)
+    end
+    prefs.voices = voices
+    tab.save(prefs, filepath .. "prefs.data")
+    print("table >> write: " .. filepath.."prefs.data")
 end
 
 local models = { "classic analog", "waveshaping", "fm", "formant", "harmonic", "wavetable", "chord", "speech", "swarm",
@@ -345,7 +369,6 @@ function add_plaits_player(i)
 
     function player:note_off(note)
         -- pass, for perc.
-        -- print("off", note)
         osc.send({ "localhost", 57120 }, "/emplaitress/note_off", { i - 1, note });
     end
 
@@ -360,7 +383,8 @@ function add_plaits_player(i)
 end
 
 function pre_init()
-    for v = 1, 4 do
+    read_prefs()
+    for v = 1, voices do
         add_plaits_player(v)
     end
 end
@@ -379,3 +403,43 @@ mod.hook.register("system_post_startup", "emplaitress post startup", function()
         print("emplaitress found mi ugens")
     end
 end)
+
+-- system mod menu for setting # of voices
+local m = {}
+
+function m.key(n, z)
+    if n == 2 and z == 1 then
+        mod.menu.exit() 
+    end
+end
+
+function m.enc(n, d)
+    if n == 3
+        then voices = util.clamp(voices + d, 1, 4) 
+    end
+    mod.menu.redraw()
+end
+
+function m.redraw()
+    screen.clear()
+    screen.level(4)
+    screen.move(0,10)
+    screen.text("MODS / EMPLAITRESS")
+    screen.level(15)
+    screen.move(0,30)
+    screen.text("voices")
+    screen.move(127,30)
+    screen.text_right(voices)
+    screen.update()
+end
+
+function m.init() 
+    read_prefs()
+end -- on menu entry
+
+function m.deinit()
+    save_prefs()
+end -- on menu exit
+
+mod.menu.register(mod.this_name, m)
+
