@@ -14,7 +14,7 @@ local function read_prefs()
         print('table >> read: ' .. filepath.."prefs.data")
         voices = prefs.voices
     else
-        voices = 4 --default # of voices
+        voices = 1 --default # of voices
     end
 end
 
