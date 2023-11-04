@@ -18,7 +18,7 @@ local function read_prefs()
     end
 end
 
-local function save_prefs()
+local function write_prefs()
     local filepath = "/home/we/dust/data/emplaitress/"
     local prefs = {}
     if util.file_exists(filepath) == false then
@@ -415,7 +415,7 @@ end
 
 function m.enc(n, d)
     if n == 3
-        then voices = util.clamp(voices + d, 1, 4) 
+        then voices = util.clamp(voices + d, 1, 4)
     end
     mod.menu.redraw()
 end
@@ -438,8 +438,7 @@ function m.init()
 end -- on menu entry
 
 function m.deinit()
-    save_prefs()
+    write_prefs()
 end -- on menu exit
 
 mod.menu.register(mod.this_name, m)
-
