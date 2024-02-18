@@ -367,6 +367,15 @@ end
 
 mod.hook.register("script_pre_init", "emplaitress pre init", pre_init)
 
+mod.hook.register("script_post_cleanup", "emplaitress post cleanup", function()
+    for v = 1,4 do
+        local p = note_players["emplait " .. v]
+        if p then
+            p.stop_all()
+        end
+    end
+end)
+
 mod.hook.register("system_post_startup", "emplaitress post startup", function()
     local has_mi = os.execute('test -n "$(find /home/we/.local/share/SuperCollider/Extensions/ -name MiPlaits.sc)"')
     if not has_mi then
