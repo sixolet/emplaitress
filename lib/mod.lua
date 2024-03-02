@@ -191,12 +191,36 @@ function add_plaits_player(i)
     end
 
     function player:describe()
+        local function generate_params(num)
+            return {
+                n(num, "model"),
+                n(num, "harmonics"),
+                n(num, "timbre"),
+                n(num, "morph"),
+                n(num, "fm_mod"),
+                n(num, "timb_mod"), 
+                n(num, "morph_mod"),
+                n(num, "a"),
+                n(num, "d"),
+                n(num, "s"),
+                n(num, "r"),
+                n(num, "lpg_color"),
+                n(num, "amp"),
+                n(num, "aux"),
+                n(num, "gain"), 
+                n(num, "pan"),
+                n(num, "send_a"),
+                n(num, "send_b")
+            }
+        end
+
         return {
             name = "emplait " .. i,
             supports_bend = false,
             supports_slew = (params:get(n(i, "style")) == 3),
             modulate_description = "timbre",
-            note_mod_targets = { "amp", "timbre", "morph", "harmonics" }
+            note_mod_targets = { "amp", "timbre", "morph", "harmonics" },
+            params = generate_params(i)
         }
     end
 
